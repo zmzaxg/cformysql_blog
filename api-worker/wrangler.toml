@@ -1,4 +1,4 @@
-name = "blog-api-worker"
+name = "blog-full-worker"
 main = "src/index.ts"
 compatibility_date = "2024-07-01"
 
@@ -11,10 +11,10 @@ id = "7d7f1fb08aaa4703a351120a6d6ab8cb"
 [vars]
 R2_DOMAIN = "你的R2图片公开域名"
 
-# 加密密钥（后台填入机密，不要写死）
+# JWT加密密钥（后台机密填入）
 [[secrets]]
 name = "JWT_SECRET"
 
-# 定时任务：每小时清理过期缓存/验证码、刷新容量统计
+# 每小时定时清理缓存、验证码、刷新容量统计
 [triggers.crons]
 cron = ["0 * * * *"]
