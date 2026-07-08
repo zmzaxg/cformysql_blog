@@ -69,8 +69,9 @@ return {u,p,cap,capImg,refreshCap,reg}
 <div style="width:1000px;margin:0 auto;padding:20px">
 <h2>我的后台</h2>
 <div style="border:1px solid #eee;padding:20px;margin-bottom:30px">
-<h4>发布文章</h4>
+<h4>发布文章（封面填入你自有图床链接）</h4>
 <input v-model="title" placeholder="标题" style="width:100%;padding:8px;margin:10px 0"/>
+<input v-model="cover" placeholder="封面图片URL（自有图床链接）" style="width:100%;padding:8px;margin:10px 0"/>
 <textarea v-model="content" rows="6" style="width:100%;padding:8px;margin:10px 0"></textarea>
 <button @click="submit" style="padding:8px 20px;background:#007bff;color:#fff;border:none">发布</button>
 </div>
@@ -80,11 +81,11 @@ return {u,p,cap,capImg,refreshCap,reg}
 <p>数据库集群：总 {{stat.total}} MB | 已用 {{stat.used}} MB | 剩余 {{stat.free}} MB <span v-if="stat.warn" style="color:red">⚠️ 容量不足请扩容</span></p>
 </div>
 </div>\`,setup(){
-const title=Vue.ref(''),content=Vue.ref(''),list=Vue.ref([]),stat=Vue.ref({total:0,used:0,free:0,warn:false})
+const title=Vue.ref(''),content=Vue.ref(''),cover=Vue.ref(''),list=Vue.ref([]),stat=Vue.ref({total:0,used:0,free:0,warn:false})
 async function loadData(){const r=await api.get('/api/post/my');list.value=r.data;const s=await api.get('/api/storage-stat');stat.value=s.data}
-async function submit(){await api.post('/api/post/create',{title:title.value,content:content.value,cover:''});alert('发布成功');title.value='';content.value='';loadData()}
+async function submit(){await api.post('/api/post/create',{title:title.value,content:content.value,cover:cover.value});alert('发布成功');title.value='';content.value='';cover.value='';loadData()}
 loadData();setInterval(async()=>{const s=await api.get('/api/storage-stat');stat.value=s.data},30000)
-return {title,content,list,stat,submit}
+return {title,content,cover,list,stat,submit}
 }}},
   {path:'/admin',component:{template:\`
 <div style="width:1200px;margin:0 auto;padding:20px">
@@ -107,6 +108,7 @@ return {shards,stat}
   {path:'/post/:uuid',component:{template:\`
 <div style="width:1000px;margin:0 auto;padding:20px">
 <h2>{{article.title}}</h2>
+<img v-if="article.cover_r2_url" :src="article.cover_r2_url" style="max-width:100%;margin:10px 0"/>
 <div style="margin-top:20px;line-height:1.8;font-size:16px">{{article.content}}</div>
 <div style="padding:10px;text-align:center;border-top:1px solid #eee;margin-top:30px">
 <p>数据库集群：总 {{stat.total}} MB | 已用 {{stat.used}} MB | 剩余 {{stat.free}} MB <span v-if="stat.warn" style="color:red">⚠️ 容量不足请扩容</span></p>
