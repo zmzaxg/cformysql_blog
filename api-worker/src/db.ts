@@ -8,7 +8,7 @@ export async function queryIndexDB(indexPool: Hyperdrive, sql: string, params: a
   return result
 }
 
-// 根据db_list行数据动态创建任意MySQL连接（zmzaxgblog0 / blog0to* 分片库）
+// 根据db_list行动态创建任意MySQL连接
 export function createDynamicHyperdrive(item: DbListItem): Hyperdrive {
   return new Hyperdrive({
     host: item.db_host,
@@ -19,7 +19,7 @@ export function createDynamicHyperdrive(item: DbListItem): Hyperdrive {
   })
 }
 
-// 通用SQL执行封装，任意Hyperdrive实例通用
+// 通用SQL执行
 export async function runSQL(hd: Hyperdrive, sql: string, params: any[] = []) {
   const stmt = hd.prepare(sql)
   params.forEach((p, i) => stmt.bind(i + 1, p))
@@ -27,7 +27,7 @@ export async function runSQL(hd: Hyperdrive, sql: string, params: any[] = []) {
   return res
 }
 
-// 根据purpose字段匹配数据库行
+// 根据purpose匹配数据库行
 export async function getDbByPurpose(indexPool: Hyperdrive, targetPurpose: string): Promise<DbListItem> {
   const res = await queryIndexDB(indexPool, `SELECT * FROM db_list WHERE purpose = ? LIMIT 1`, [targetPurpose])
   if (res.rows.length === 0) throw new Error(`数据库【${targetPurpose}】未在db_list找到`)
