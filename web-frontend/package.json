@@ -1,18 +1,21 @@
 {
-  "name": "blog-frontend",
-  "version": "0.0.0",
+  "name": "blog-full-worker",
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.4.0",
-    "axios": "^1.7.0"
+    "hono": "^4.5.0",
+    "bcryptjs": "^2.4.3",
+    "svg-captcha": "^1.4.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
-    "vite": "^5.3.0"
+    "wrangler": "^3.65.0",
+    "typescript": "^5.5.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.14.0",
+    "@cloudflare/workers-types": "^4.20240701.0"
   }
 }
