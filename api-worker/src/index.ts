@@ -5,6 +5,7 @@ import {
   createCaptchaSvg, createToken, parseToken, hashPwd, comparePwd,
   calcStorageStat, pickWriteShard, uuid, getCache, setCache, cleanExpiredAll
 } from "./util"
+import { getHomePage } from "./staticRouter"
 import type { UserRole, GlobalUser, DbListItem, BlogShardRecord } from "./types"
 
 type Env = {
@@ -16,7 +17,18 @@ type Env = {
 const app = new Hono<{ Bindings: Env }>()
 app.use("*", cors({ origin: "*", allowMethods: ["GET", "POST", "PUT", "DELETE"] }))
 
-// ==================== 1. 全局容量统计接口（前端页脚调用） ====================
+// ========== 静态页面路由（所有页面由Worker直接返回，不需要Pages） ==========
+app.get("/*", async (c, next) => {
+  const path = c.req.path
+  // API接口走后续逻辑，其余全部返回前端页面
+  if (path.startsWith("/api/")) return next()
+  const workerUrl = new URL(c.req.url).origin
+  const html = getHomePage(workerUrl)
+  return c.html(html)
+})
+
+// ==================== API接口区域 ====================
+// 1. 全局容量统计
 app.get("/api/storage-stat", async (c) => {
   const indexPool = c.env.INDEX_POOL
   let stat = await getCache(indexPool, "storage_stat")
@@ -27,7 +39,7 @@ app.get("/api/storage-stat", async (c) => {
   return c.json(stat)
 })
 
-// ==================== 2. 图形验证码接口 ====================
+// 2. 图形验证码
 app.get("/api/captcha", async (c) => {
   const indexPool = c.env.INDEX_POOL
   const cap = createCaptchaSvg()
@@ -46,7 +58,7 @@ app.get("/api/captcha", async (c) => {
   return c.body(cap.svg, { headers: { "Content-Type": "image/svg+xml", "X-Captcha-Session": sessionId } })
 })
 
-// ==================== 3. 账号注册、登录 ====================
+// 3. 注册
 app.post("/api/register", async (c) => {
   const indexPool = c.env.INDEX_POOL
   const { username, pwd, captcha, sessionId } = await c.req.json()
@@ -55,7 +67,6 @@ app.post("/api/register", async (c) => {
   const metaDbItem = await getDbByPurpose(indexPool, "博客0数据库索引")
   const metaHD = createDynamicHyperdrive(metaDbItem)
 
-  // 验证码校验
   const capRes = await runSQL(metaHD, `
     SELECT captcha_code, is_consumed FROM captcha_store
     WHERE session_sn = ? AND biz_scene = 'register' AND expire_unix > ?
@@ -65,22 +76,20 @@ app.post("/api/register", async (c) => {
   if (capData.is_consumed === 1) return c.json({ msg: "验证码已使用" }, 400)
   if (capData.captcha_code !== captcha.toLowerCase()) return c.json({ msg: "验证码错误" }, 400)
 
-  // 用户名查重
   const exist = await runSQL(metaHD, `SELECT uid FROM global_users WHERE username = ?`, [username])
   if (exist.rows.length > 0) return c.json({ msg: "用户名已存在" }, 400)
 
-  // 创建用户
   const hash = hashPwd(pwd)
   const ip = c.req.header("CF-Connecting-IP") || "0.0.0.0"
   await runSQL(metaHD, `
     INSERT INTO global_users(username, password_hash, register_ip) VALUES (?,?,?)
   `, [username, hash, ip])
 
-  // 标记验证码已使用
   await runSQL(metaHD, `UPDATE captcha_store SET is_consumed = 1 WHERE session_sn = ?`, [sessionId])
   return c.json({ msg: "注册成功" })
 })
 
+// 4. 登录
 app.post("/api/login", async (c) => {
   const indexPool = c.env.INDEX_POOL
   const { username, pwd } = await c.req.json()
@@ -95,7 +104,6 @@ app.post("/api/login", async (c) => {
   if (user.status !== 1) return c.json({ msg: "账号已封禁" }, 400)
   if (!comparePwd(pwd, user.password_hash)) return c.json({ msg: "密码错误" }, 400)
 
-  // 更新登录记录
   const ip = c.req.header("CF-Connecting-IP") || "0.0.0.0"
   await runSQL(metaHD, `
     UPDATE global_users SET last_login_time = NOW(), last_login_ip = ? WHERE uid = ?
@@ -115,7 +123,7 @@ const authMid = async (c, next) => {
   await next()
 }
 
-// 获取当前登录用户信息
+// 获取用户信息
 app.get("/api/user/info", authMid, async (c) => {
   const indexPool = c.env.INDEX_POOL
   const user = c.get("user")
@@ -127,8 +135,7 @@ app.get("/api/user/info", authMid, async (c) => {
   return c.json(info.rows[0])
 })
 
-// ==================== 4. 博文分片读写接口 ====================
-// 创建博文，自动均衡分配分片
+// 创建博文（均衡分片写入）
 app.post("/api/post/create", authMid, async (c) => {
   const indexPool = c.env.INDEX_POOL
   const { title, content, cover } = await c.req.json()
@@ -138,13 +145,11 @@ app.post("/api/post/create", authMid, async (c) => {
   const targetShard = await pickWriteShard(indexPool)
   const shardHD = createDynamicHyperdrive(targetShard)
 
-  // 写入分片博文
   const postRes = await runSQL(shardHD, `
     INSERT INTO blog_post(post_uuid, title, content, cover_r2_url) VALUES (?,?,?,?)
   `, [postUuid, title, content, cover])
   const localId = postRes.meta.insertId
 
-  // 写入分片路由映射
   const metaDbItem = await getDbByPurpose(indexPool, "博客0数据库索引")
   const metaHD = createDynamicHyperdrive(metaDbItem)
   await runSQL(metaHD, `
@@ -155,7 +160,7 @@ app.post("/api/post/create", authMid, async (c) => {
   return c.json({ msg: "发布成功", uuid: postUuid })
 })
 
-// 获取当前用户全部博文（跨分片聚合）
+// 获取我的全部博文
 app.get("/api/post/my", authMid, async (c) => {
   const indexPool = c.env.INDEX_POOL
   const user = c.get("user")
@@ -202,7 +207,7 @@ app.get("/api/post/:uuid", async (c) => {
   return c.json(post.rows[0])
 })
 
-// ==================== 5. 管理员分片监控接口 ====================
+// 管理员分片监控
 app.get("/api/admin/shards", authMid, async (c) => {
   const indexPool = c.env.INDEX_POOL
   const user = c.get("user")
@@ -219,7 +224,7 @@ app.get("/api/admin/shards", authMid, async (c) => {
   return c.json({ shards: shards.rows, weightCfg: weights.rows })
 })
 
-// ==================== 6. 定时Cron任务 ====================
+// 定时Cron任务
 app.cron("0 * * * *", async (c) => {
   const indexPool = c.env.INDEX_POOL
   const stat = await calcStorageStat(indexPool)
