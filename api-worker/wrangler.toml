@@ -2,14 +2,12 @@ name = "blog-full-worker"
 main = "src/index.ts"
 compatibility_date = "2024-07-01"
 
-# 仅唯一Hyperdrive：只读 zmzaxgIndex
+# 唯一Hyperdrive：只读 zmzaxgIndex
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "7d7f1fb08aaa4703a351120a6d6ab8cb"
 
-# 公开环境变量
-[vars]
-R2_DOMAIN = "你的R2图片公开域名"
+# 无R2_DOMAIN环境变量，全部移除
 
 # JWT加密密钥（后台机密填入）
 [[secrets]]
