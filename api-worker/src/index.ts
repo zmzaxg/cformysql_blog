@@ -8,19 +8,18 @@ import {
 import { getHomePage } from "./staticRouter"
 import type { UserRole, GlobalUser, DbListItem, BlogShardRecord } from "./types"
 
+// 环境绑定仅保留INDEX_POOL、JWT_SECRET，删除R2_DOMAIN
 type Env = {
   INDEX_POOL: Hyperdrive
   JWT_SECRET: string
-  R2_DOMAIN: string
 }
 
 const app = new Hono<{ Bindings: Env }>()
 app.use("*", cors({ origin: "*", allowMethods: ["GET", "POST", "PUT", "DELETE"] }))
 
-// ========== 静态页面路由（所有页面由Worker直接返回，不需要Pages） ==========
+// ========== 静态页面路由（全站页面全部Worker渲染，无Pages） ==========
 app.get("/*", async (c, next) => {
   const path = c.req.path
-  // API接口走后续逻辑，其余全部返回前端页面
   if (path.startsWith("/api/")) return next()
   const workerUrl = new URL(c.req.url).origin
   const html = getHomePage(workerUrl)
@@ -135,7 +134,7 @@ app.get("/api/user/info", authMid, async (c) => {
   return c.json(info.rows[0])
 })
 
-// 创建博文（均衡分片写入）
+// 创建博文（封面字段接收用户自有图床链接）
 app.post("/api/post/create", authMid, async (c) => {
   const indexPool = c.env.INDEX_POOL
   const { title, content, cover } = await c.req.json()
