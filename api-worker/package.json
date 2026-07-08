@@ -1,8 +1,9 @@
 {
-  "name": "blog-api-worker",
+  "name": "blog-full-worker",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
