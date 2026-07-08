@@ -1,10 +1,8 @@
 name = "cformysql-blog"
 main = "src/index.ts"
-# 关键：升级日期至2024-09-23之后
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# 唯一Hyperdrive：只读 zmzaxgIndex
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "7d7f1fb08aaa4703a351120a6d6ab8cb"
