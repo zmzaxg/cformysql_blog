@@ -1,7 +1,7 @@
-name = "blog-full-worker"
+name = "cformysql-blog"
 main = "src/index.ts"
-compatibility_date = "2024-07-01"
-# 开启Node兼容，解决svg-captcha找不到path/assert
+# 关键：升级日期至2024-09-23之后
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # 唯一Hyperdrive：只读 zmzaxgIndex
@@ -9,8 +9,6 @@ compatibility_flags = ["nodejs_compat"]
 binding = "HYPERDRIVE"
 id = "7d7f1fb08aaa4703a351120a6d6ab8cb"
 
-# 空变量块，无R2
 [vars]
 
-# 定时任务正确格式
 triggers.crons = ["0 * * * *"]
